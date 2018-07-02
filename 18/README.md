@@ -25,51 +25,53 @@ By storing it in a BigchainDB Network, it allows Members to vote asynchronously,
 ## Specification
 <!--The technical specification should describe the syntax and semantics of any new feature. The specification should be detailed enough to allow competing, interoperable implementations. It MAY describe the impact on data models, API endpoints, security, performance, end users, deployment, documentation, and testing.-->
 
-Let the validator set be denoted by `Vₜ` at time `t`, a Member of a BigchainDB Network can start a new Election. This member is called **Initiator** (`vₜᵢ` s.t. `vₜᵢ ∊ Vₜ`) .
+Let the validator set be denoted by ![V_t][eq_V_t] at time ![][eq_t], a member of a BigchainDB Network can start a new Election. This member is called **Initiator** (![v_it][eq_v_it] s.t. ![v_it in V][eq1]) .
+
 
 ### Valid Election
 
-An Election proposal is a transaction representing the matter of change. The _Initiator_ `vₜᵢ`, issues a create election transaction (referred as `ECₜ`). The election MUST contain outputs  such that each output is populated with the public key of the validator `vₖ` such that `vₖ ∊ Vₜ`, and an amount equal to the current power `P(vₖ, t)` of the validator.
+An Election proposal is a transaction representing the matter of change. The _Initiator_ ![v_it][eq_v_it], issues a create election transaction ![][EC_t]. The election MUST contain outputs  such that each output is populated with the public key of the validator ![][eq_v_k] s.t. ![][v_k_in_V_t], and an amount equal to the current power ![][eq_p(v_k, t)]  of the validator.
 
 
 ### Voting
 
-Once `ECₜ` is committed in a block, the election starts. Independently and asynchronously, each validator may spend its vote tokens (referred as `Tₖ`) to the election address (`ECₜₐ`) to show agreement on the matter of change. The Election Address `ECₜₐ` is the `id` of the transaction `ECₜ`.
+Once ![][EC_t] is committed in a block, the election starts. Independently and asynchronously, each validator may spend its vote tokens (referred as ![][T_k]) to the election address ![][EC_t_addr] to show agreement on the matter of change. The Election Address ![][EC_t_addr] is the `id` of the transaction ![][EC_t].
 
-NOTE: Once the vote tokens `Tₖ` have been transferred to the election address `ECₐ` it is not possible to transfer it again, because the private key is not known.
+NOTE: Once the vote tokens ![][T_k] have been transferred to the election address ![][EC_t_addr] it is not possible to transfer it again, because the private key is not known.
 
 
 ### Concluding Election
 
-At time `tn` let,
-- Validator set be denoted by `Vₜₙ` s.t. `vᵢ ∊ Vₜₙ` 
-- `vₘ ∊ Vₘ`, where `Vₘ` denotes the set of public keys who voted for election `ECₜ`
-- `Tₙₑᵤ` be the newly received vote token
+At time ![][t_n] let,
+- Validator set be denoted by ![][V_t_n] s.t. ![][vi_in_V_tn]
+- ![][vm_in_Vm], where ![][V_m] denotes the set of public keys who voted for election ![][EC_t]
+- ![][T_new] be the newly received vote token
 
 
 #### Constrained approach (Approach 1)
 In the constrained approach any change to the validator set invalidates all the elections which were initiated with a different validator set.
 
 If below conditions hold true then the election is concluded and the proposed change is applied,
-1. `Vₜₙ = Vₜ` 
-2. `Tₙₑᵤ + ∑ₖ Tₖ > (2/3) ∑ₖ P(vₖ, t)` where `vₖ ∊ Vₜ` and `Tₖ` denotes the vote tokens received at `ECₐ` prior the the current token
-3. `∑ₖ Tₖ < (2/3) ∑ₖ P(vₖ, t)`
+1. ![][V_tn_equals_V_t]
+2. ![][constrain_condition1] where ![][v_k_in_V_t] and ![][T_k] denotes the vote tokens received at ![][EC_t_addr] prior the the current token
+3. ![][constrain_condition2]
 
 
 #### Generalized approach (Approach 2)
 The generalized constraints can tolerate a certain degree of change to the validator set.
 
 If below conditions hold then the election is concluded and the proposed change is applied,
-- `Tₙₑᵤ + ∑ₖ Tₖ > (2/3) ∑ₖ P(vₖ, t)` where `vₖ ∊ Vₜ` and `Tₖ` denotes the vote tokens received at `ECₐ` prior the the current token
-- `∑ₘ P(vₘ, tn) > (2/3) ∑ᵢ P(vᵢ, tn)`
-- `∑ₖ Tₖ < (2/3) ∑ₖ P(vₖ, t)` 
 
-The above constraints state that if the validators with which an election `ECₜ` was initiated still hold super-majority then the election can be concluded.
+1. ![][general_condition1]
+2. ![][constrain_condition1] where ![][v_k_in_V_t] and ![][T_k] denotes the vote tokens received at ![][EC_t_addr] prior the the current token
+3. ![][constrain_condition2]
+
+The above constraints state that if the validators with which an election ![][EC_t] was initiated still hold super-majority then the election can be concluded.
 
 
 ### Applying change
 
-During the `end_block` call, all transactions about to be committed are checked. Every vote token triggers a function (which implements **Approch 1** or **Approach 2**) that checks the necessary conditions. If the function returns `True` then the current validator applies the suggested change in `ECₜ`. Given the BFT nature of the system, all non-Byzantine Validator will commit the change at the same block height.
+During the `end_block` call, all transactions about to be committed are checked. Every vote token triggers a function (which implements **Approch 1** or **Approach 2**) that checks the necessary conditions. If the function returns `True` then the current validator applies the suggested change in ![][EC_t]. Given the BFT nature of the system, all non-Byzantine Validator will commit the change at the same block height.
 
 
 ## Rationale
@@ -89,3 +91,23 @@ To the extent possible under law, the person who associated CC0 with this work h
 
 [BEP-3]: ../3
 [BEP-13]: ../13
+[eq_V_t]: http://latex.codecogs.com/gif.latex?V_t
+[eq_t]: http://latex.codecogs.com/gif.latex?t
+[eq_v_it]: http://latex.codecogs.com/gif.latex?v_%7Bit%7D
+[eq1]: http://latex.codecogs.com/gif.latex?v_%7Bit%7D%20%5Cin%20V_t
+[EC_t]: http://latex.codecogs.com/gif.latex?EC_t
+[eq_v_k]: http://latex.codecogs.com/gif.latex?v_k
+[v_k_in_V_t]: http://latex.codecogs.com/gif.latex?v_k%20%5Cin%20V_t
+[eq_p(v_k, t)]: http://latex.codecogs.com/gif.latex?P%28v_k%2C%20t%29
+[T_k]: http://latex.codecogs.com/gif.latex?T_k
+[t_n]: http://latex.codecogs.com/gif.latex?t_n
+[T_new]: http://latex.codecogs.com/gif.latex?T_%7Bnew%7D
+[EC_t_addr]: http://latex.codecogs.com/gif.latex?EC_%7Bt%2C%20addr%7D
+[V_t_n]: http://latex.codecogs.com/gif.latex?V_%7Bt_%7Bn%7D%7D
+[vi_in_V_tn]: http://latex.codecogs.com/gif.latex?v_i%20%5Cin%20V_%7Bt_%7Bn%7D%7D
+[vm_in_Vm]: http://latex.codecogs.com/gif.latex?v_m%20%5Cin%20V_m
+[V_m]: http://latex.codecogs.com/gif.latex?V_m
+[V_tn_equals_V_t]: http://latex.codecogs.com/gif.latex?V_%7Bt_%7Bn%7D%7D%20%5Cequiv%20V_t
+[constrain_condition1]: http://latex.codecogs.com/gif.latex?T_%7Bnew%7D%20&plus;%20%5Csum_%7Bk%7D%20T_k%20%3E%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%20%5Csum_k%20P%28v_k%2C%20t%29%20%5CBigg%29
+[constrain_condition2]: http://latex.codecogs.com/gif.latex?%5Csum_%7Bk%7D%20T_k%20%3C%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%20%5Csum_k%20P%28v_k%2C%20t%29%20%5CBigg%29
+[general_condition1]: http://latex.codecogs.com/gif.latex?%5Csum_m%20P%28v_m%2C%20t_n%29%20%3E%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%5Csum_i%20P%28v_i%2C%20t_n%29%20%5CBigg%29
