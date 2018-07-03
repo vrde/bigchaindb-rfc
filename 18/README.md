@@ -4,6 +4,7 @@ name: Transactional Election Process
 type: standard
 status: raw
 editor: Alberto Granzotto <alberto@bigchaindb.com>
+contributers: Vanshdeep Singh <vanshdeep@bigchaindb.com>, Lev Berman <lev@bigchaindb.com>
 ```
 
 
