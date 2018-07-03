@@ -69,6 +69,21 @@ If below conditions hold then the election is concluded and the proposed change 
 
 The above constraints state that if the validators with which an election ![][EC_t] was initiated still hold super-majority then the election can be concluded.
 
+#### Approach 1 vs Approach 2
+
+Approach 1 is easier to comprehend and explain because of how constrained it is.
+
+Approach 2 has two benefits over the Approach 1.
+
+1. Elections can have intersections. In other words, the following is possible:
+
+    ```
+    election 1 creation height < election 2 creation height < election 1 conclusion height < election 2 conclusion height
+    ```
+
+2.  Elections can survive network updates. For example, each validator in the network can move to a new address and delegate his vote to the new address. Elections created prior to such migrations can still be concluded.
+
+For a start, we plan to implement Approach 1 because of its simplicity. We are able to switch to Approach 2 in the future by the means of a soft fork with additional support for the new type of elections described in Approach 2.
 
 ### Applying change
 
