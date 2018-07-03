@@ -4,6 +4,7 @@ name: Transactional Election Process
 type: standard
 status: raw
 editor: Alberto Granzotto <alberto@bigchaindb.com>
+contributers: Vanshdeep Singh <vanshdeep@bigchaindb.com>, Lev Berman <lev@bigchaindb.com>
 ```
 
 
@@ -11,7 +12,7 @@ editor: Alberto Granzotto <alberto@bigchaindb.com>
 
 ## Abstract
 <!-- The abstract is a short (~200 word) description of the technical issue being addressed. -->
-This specification introduces the new concept of **Election**. An Election is an asynchronous process that when successful triggers Network wide changes synchronously (i.e. at the same *block height*). An Election is started by any Validator in the Network, called **Initiatior**. The Election itself and all cast Votes are transactions, hence stored in the blockchain. This enables new Validators to replay Network changes incrementally, while syncing.
+This specification introduces the new concept of **Election**. An Election is an asynchronous process that when successful triggers Network wide changes synchronously (i.e. at the same *block height*). An Election is started by any Validator in the Network, called **Initiatior**. The Election itself and all casted Votes are transactions, hence stored in the blockchain. This enables new Validators to replay Network changes incrementally, while syncing.
 
 ## Motivation
 <!--The motivation is critical for BEPs that want to change the BigchainDB protocol. It should clearly explain why the existing protocol BEP is inadequate to address the problem that the BEP solves. BEP submissions without sufficient motivation may be rejected outright.-->
@@ -25,173 +26,69 @@ By storing it in a BigchainDB Network, it allows Members to vote asynchronously,
 ## Specification
 <!--The technical specification should describe the syntax and semantics of any new feature. The specification should be detailed enough to allow competing, interoperable implementations. It MAY describe the impact on data models, API endpoints, security, performance, end users, deployment, documentation, and testing.-->
 
-At any point in time, a Member of a BigchainDB Network can start a new Election.This Member is called **Initiator**.
+Let the validator set be denoted by ![V_t][eq_V_t] at time ![][eq_t], a member of a BigchainDB Network can start a new Election. This member is called **Initiator** (![v_it][eq_v_it] s.t. ![v_it in V][eq1]) .
 
-An Election is a transaction representing the matter of change, and some Vote tokens. The Initiator issues a `CREATE` transaction with the `amount` set to the total power of the Validators. There will be multiple `outputs`, one per Validator. Each output is populated with the public key of the Validator, and an amount equal to the power of the Validator.
 
-At this point the Election starts. Independently, and asynchronously, each Validator can spend its Vote tokens to an Election Address to show agreement on the matter of change. The Election Address is the `id` of the first `CREATE` transaction. Once the Vote tokens has been transferred to that address, it is not possible to transfer it again, because there private key is not known.
+### Valid Election
 
-During the `end_block` call, all transactions about to be committed are checked. Every transfer of a vote token triggers a functions that counts the number of positive votes of Election over the number of voters. If the ratio is greater than ⅔, then the current validator commits the change. Given the BFT nature of the system, all non-Byzantine Validator will commit the change at the same block height.
+An Election proposal is a transaction representing the matter of change. The _Initiator_ ![v_it][eq_v_it], issues a create election transaction ![][EC_t]. The election MUST contain outputs  such that each output is populated with the public key of the validator ![][eq_v_k] s.t. ![][v_k_in_V_t], and an amount equal to the current power ![][eq_p(v_k, t)]  of the validator.
 
-Each Validator checks every new transaction that is about to be committed in a block. The process is roughly the following:
-1. If the transaction is **not** a valid Vote, return.
-4. If `asset.data.id` is **not** a valid Election, return.
-2. If the Election has less than ⅔ of positive votes, return.
-3. Execute the logic to implement the Election.
 
-###  Validate Vote
-A Validator must be able to discern valid Votes from invalid ones. The process is roughly the following:
+### Voting
 
-1. If the transaction is **not** a `TRANSFER`, return false.
-2. If `metadata.type` is **not** `vote`, return false.
-3. If `inputs.owners_before` is **not** a Validator, return false.
-5. Return true.
+Once ![][EC_t] is committed in a block, the election starts. Independently and asynchronously, each validator may spend its vote tokens (referred as ![][T_k]) to the election address ![][EC_t_addr] to show agreement on the matter of change. The Election Address ![][EC_t_addr] is the `id` of the transaction ![][EC_t].
 
-### Validate Election
-A Validator must be able to discern valid Elections from invalid ones. The process is roughly the following:
-1. `type`: must contain the string `election`.
-2. `name`: name of the election.
-3. `version`: version number.
-4. `matter`: a human readable, short paragraph on the matter of change.
-5. If `inputs.owners_before` is **not** a Validator, return.
-6. If every `outputs.owners_after.amount` is **not** exactly `1`, return.
-7. If `outputs.owners_after` does **not** contain exactly all Validators, return.
-8. Apply any other validation rule enforced by the code specific to the election itself, return false if it fails.
-9. Return true.
+NOTE: Once the vote tokens ![][T_k] have been transferred to the election address ![][EC_t_addr] it is not possible to transfer it again, because the private key is not known.
 
-### Extra: Vote delegation
-Vote delegation is trivial. Let's consider a Network of three Members: Alice, Bob, and Carly. Alice is the Initiator, and starts a new Election. Alice generates a `CREATE` transaction with three outputs, one per each Member. Bob wants to delegate his vote to Carly, so he transfers his output to Carly, granting her more votes she can spend in the way she wants.
 
-### Example: an Election to add a new Validator
-Alice (power `20`), Bob (power `10`), Carly (power `10`) and Daniel (power `10`) want to add Frank to the Network. Alice is the Initiator, and starts a new Election. Alice generates a `CREATE` transaction with `50` vote tokens. The transaction looks roughly like this:
+### Concluding Election
 
-```json
-{
-  "asset": {
-    "data": {
-      "type": "election",
-      "name": "upsert-validator",
-      "version": "1.0",
-      "matter": "After the meeting we had on May 23rd, 2018, we decided to add Frank to the Network.",
-      "args": [
-        "Frank's public key",
-        "Frank's node id",
-	"Frank's hostname",
-	"New voting power"
-      ]
-    }
-  },
-  "id": "e...047",
-  "inputs": [
-    {
-      "fulfillment": "p...34C",
-      "fulfills": null,
-      "owners_before": [
-        "Alice's public key"
-      ]
-    }
-  ],
-  "metadata": null,
-  "operation": "CREATE",
-  "outputs": [
-    {
-      "amount": "20",
-      "condition": {
-        "details": {
-          "public_key": "Alice's public key",
-          "type": "ed25519-sha-256"
-        },
-        "uri": "ni:///sha-256;c...7-8Y?fpt=ed25519-sha-256&cost=131072"
-      },
-      "public_keys": [
-        "Alice's public key"
-      ]
-    },
-    {
-      "amount": "10",
-      "condition": {
-        "details": {
-          "public_key": "Bob's public key",
-          "type": "ed25519-sha-256"
-        },
-        "uri": "ni:///sha-256;b...123?fpt=ed25519-sha-256&cost=131072"
-      },
-      "public_keys": [
-        "Bob's public key"
-      ]
-    },
-    {
-      "amount": "10",
-      "condition": {
-        "details": {
-          "public_key": "Carly's public key",
-          "type": "ed25519-sha-256"
-        },
-        "uri": "ni:///sha-256;c...13C?fpt=ed25519-sha-256&cost=131072"
-      },
-      "public_keys": [
-        "Carly's public key"
-      ]
-    },
-    {
-      "amount": "10",
-      "condition": {
-        "details": {
-          "public_key": "Daniel's public key",
-          "type": "ed25519-sha-256"
-        },
-        "uri": "ni:///sha-256;c...7-8Y?fpt=ed25519-sha-256&cost=131072"
-      },
-      "public_keys": [
-        "Daniel's public key"
-      ]
-    }
-  ],
-  "version": "2.0"
-}
-```
+At time ![][t_n] let,
+- Validator set be denoted by ![][V_t_n] s.t. ![][vi_in_V_tn]
+- ![][vm_in_Vm], where ![][V_m] denotes the set of public keys who voted for election ![][EC_t]
+- ![][T_new] be the newly received vote token
 
-Now that the Election has been created, each Member can cast their vote. Bob starts:
-```json
-{
-  "asset": {
-    "id": "e...047"
-  },
-  "id": "a...123",
-  "inputs": [
-    {
-      "fulfillment": "f...qE8p",
-      "fulfills": {
-        "output_index": 1,
-        "transaction_id": "e...047"
-      },
-      "owners_before": [
-        "Bob's public key"
-      ]
-    }
-  ],
-  "metadata": {
-    "type": "vote"
-  },
-  "operation": "TRANSFER",
-  "outputs": [
-    {
-      "amount": "10",
-      "condition": {
-        "details": {
-          "public_key": "Election Address",
-          "type": "ed25519-sha-256"
-        },
-        "uri": "ni:///sha-256;b...123?fpt=ed25519-sha-256&cost=131072"
-      },
-      "public_keys": [
-        "Election Address"
-      ]
-    }
-  ],
-  "version": "2.0"
-}
-```
+
+#### Constrained approach (Approach 1)
+In the constrained approach any change to the validator set invalidates all the elections which were initiated with a different validator set.
+
+If below conditions hold true then the election is concluded and the proposed change is applied,
+1. ![][V_tn_equals_V_t]
+2. ![][constrain_condition1] where ![][v_k_in_V_t] and ![][T_k] denotes the vote tokens received at ![][EC_t_addr] prior the the current token
+3. ![][constrain_condition2]
+
+
+#### Generalized approach (Approach 2)
+The generalized constraints can tolerate a certain degree of change to the validator set.
+
+If below conditions hold then the election is concluded and the proposed change is applied,
+
+1. ![][general_condition1]
+2. ![][constrain_condition1] where ![][v_k_in_V_t] and ![][T_k] denotes the vote tokens received at ![][EC_t_addr] prior the the current token
+3. ![][constrain_condition2]
+
+The above constraints state that if the validators with which an election ![][EC_t] was initiated still hold super-majority then the election can be concluded.
+
+#### Approach 1 vs Approach 2
+
+Approach 1 is easier to comprehend and explain because of how constrained it is.
+
+Approach 2 has two benefits over the Approach 1.
+
+1. Elections can have intersections. In other words, the following is possible:
+
+    ```
+    election 1 creation height < election 2 creation height < election 1 conclusion height < election 2 conclusion height
+    ```
+
+2.  Elections can survive network updates. For example, each validator in the network can move to a new address and delegate his vote to the new address. Elections created prior to such migrations can still be concluded.
+
+For a start, we plan to implement Approach 1 because of its simplicity. We are able to switch to Approach 2 in the future by the means of a soft fork with additional support for the new type of elections described in Approach 2.
+
+### Applying change
+
+During the `end_block` call, all transactions about to be committed are checked. Every vote token triggers a function (which implements **Approch 1** or **Approach 2**) that checks the necessary conditions. If the function returns `True` then the current validator applies the suggested change in ![][EC_t]. Given the BFT nature of the system, all non-Byzantine Validator will commit the change at the same block height.
+
 
 ## Rationale
 <!--The rationale fleshes out the specification by describing what motivated the design and why particular design decisions were made. It should describe alternate designs that were considered and related work, e.g. how the feature is supported in other languages. The rationale may also provide evidence of consensus within the community, and should discuss important objections or concerns raised during discussion.-->
@@ -210,3 +107,23 @@ To the extent possible under law, the person who associated CC0 with this work h
 
 [BEP-3]: ../3
 [BEP-13]: ../13
+[eq_V_t]: http://latex.codecogs.com/gif.latex?V_t
+[eq_t]: http://latex.codecogs.com/gif.latex?t
+[eq_v_it]: http://latex.codecogs.com/gif.latex?v_%7Bit%7D
+[eq1]: http://latex.codecogs.com/gif.latex?v_%7Bit%7D%20%5Cin%20V_t
+[EC_t]: http://latex.codecogs.com/gif.latex?EC_t
+[eq_v_k]: http://latex.codecogs.com/gif.latex?v_k
+[v_k_in_V_t]: http://latex.codecogs.com/gif.latex?v_k%20%5Cin%20V_t
+[eq_p(v_k, t)]: http://latex.codecogs.com/gif.latex?P%28v_k%2C%20t%29
+[T_k]: http://latex.codecogs.com/gif.latex?T_k
+[t_n]: http://latex.codecogs.com/gif.latex?t_n
+[T_new]: http://latex.codecogs.com/gif.latex?T_%7Bnew%7D
+[EC_t_addr]: http://latex.codecogs.com/gif.latex?EC_%7Bt%2C%20addr%7D
+[V_t_n]: http://latex.codecogs.com/gif.latex?V_%7Bt_%7Bn%7D%7D
+[vi_in_V_tn]: http://latex.codecogs.com/gif.latex?v_i%20%5Cin%20V_%7Bt_%7Bn%7D%7D
+[vm_in_Vm]: http://latex.codecogs.com/gif.latex?v_m%20%5Cin%20V_m
+[V_m]: http://latex.codecogs.com/gif.latex?V_m
+[V_tn_equals_V_t]: http://latex.codecogs.com/gif.latex?V_%7Bt_%7Bn%7D%7D%20%5Cequiv%20V_t
+[constrain_condition1]: http://latex.codecogs.com/gif.latex?T_%7Bnew%7D%20&plus;%20%5Csum_%7Bk%7D%20T_k%20%3E%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%20%5Csum_k%20P%28v_k%2C%20t%29%20%5CBigg%29
+[constrain_condition2]: http://latex.codecogs.com/gif.latex?%5Csum_%7Bk%7D%20T_k%20%3C%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%20%5Csum_k%20P%28v_k%2C%20t%29%20%5CBigg%29
+[general_condition1]: http://latex.codecogs.com/gif.latex?%5Csum_m%20P%28v_m%2C%20t_n%29%20%3E%20%5Cfrac%7B2%7D%7B3%7D%20%5CBigg%28%5Csum_i%20P%28v_i%2C%20t_n%29%20%5CBigg%29
